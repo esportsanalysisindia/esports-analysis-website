@@ -408,9 +408,9 @@ function showMatch(number) {
     "DAY " + currentDay + " / 3";
 
   document.querySelectorAll(".match-btn").forEach((button, index) => {
-    button.classList.toggle("active", index === number - 1);
-    button.textContent = "M" + (number === 6 ? 6 : number);
-  });
+  button.classList.toggle("active", index === number - 1);
+  button.textContent = "M" + (index + 1);
+});
 }
 
 function openImage() {
