@@ -287,34 +287,34 @@ footer span {color:var(--lime)}
 
   <h3 class="section-title">SELECT DAY</h3>
 
-  <div class="days">
-    <div class="day active">
-      <strong>DAY 1</strong>
-      <small>Match 1–6</small>
-    </div>
-    <div class="day disabled">
-      <strong>DAY 2</strong>
-      <small>Coming Soon</small>
-    </div>
-    <div class="day disabled">
-      <strong>DAY 3</strong>
-      <small>Coming Soon</small>
-    </div>
+<div class="days">
+  <div class="day active" id="day1" onclick="selectDay(1)">
+    <strong>DAY 1</strong>
+    <small>Match 1–6</small>
   </div>
+  <div class="day" id="day2" onclick="selectDay(2)">
+    <strong>DAY 2</strong>
+    <small>Match 7–12</small>
+  </div>
+  <div class="day" id="day3" onclick="selectDay(3)">
+    <strong>DAY 3</strong>
+    <small>Match 13–18</small>
+  </div>
+</div>
 </section>
 
 <div class="divider"></div>
 
 <section>
-  <h3 class="section-title">DAY 1 – SELECT MATCH</h3>
+  <h3 class="section-title" id="dayTitle">DAY 1 – SELECT MATCH</h3>
 
   <div class="match-buttons">
-    <button class="match-btn active" onclick="showMatch(1)">M1</button>
-    <button class="match-btn" onclick="showMatch(2)">M2</button>
-    <button class="match-btn" onclick="showMatch(3)">M3</button>
-    <button class="match-btn" onclick="showMatch(4)">M4</button>
-    <button class="match-btn" onclick="showMatch(5)">M5</button>
-    <button class="match-btn" onclick="showMatch(6)">M6</button>
+    <button class="match-btn active" id="matchBtn1" onclick="showMatch(1)">M1</button>
+    <button class="match-btn" id="matchBtn2" onclick="showMatch(2)">M2</button>
+    <button class="match-btn" id="matchBtn3" onclick="showMatch(3)">M3</button>
+    <button class="match-btn" id="matchBtn4" onclick="showMatch(4)">M4</button>
+    <button class="match-btn" id="matchBtn5" onclick="showMatch(5)">M5</button>
+    <button class="match-btn" id="matchBtn6" onclick="showMatch(6)">M6</button>
   </div>
 
   <div class="result-card">
@@ -327,16 +327,15 @@ footer span {color:var(--lime)}
       id="matchImage"
       class="pt-image"
       src="BMIC-2026-Day-1-Match-01.jpg"
-      alt="BMIC 2026 Day 1 Match 1 Points Table"
+      alt="BMIC 2026 Points Table"
       onclick="openImage()"
-    >
+    />
 
     <div class="image-hint">
       Tap image to view full size
     </div>
   </div>
 </section>
-
 </main>
 
 <footer>
@@ -358,24 +357,59 @@ const matches = [
   "BMIC-2026-Day-1-Match-03.jpg",
   "BMIC-2026-Day-1-Match-04.jpg",
   "BMIC-2026-Day-1-Match-05.jpg",
-  "BMIC-2026-Day-1-Match-06.jpg"
+  "BMIC-2026-Day-1-Match-06.jpg",
+
+  "BMIC-2026-Day-2-Match-07.jpg",
+  "BMIC-2026-Day-2-Match-08.jpg",
+  "BMIC-2026-Day-2-Match-09.jpg",
+  "BMIC-2026-Day-2-Match-10.jpg",
+  "BMIC-2026-Day-2-Match-11.jpg",
+  "BMIC-2026-Day-2-Overall-Standings.jpg",
+
+  "BMIC-2026-Day-3-Match-13.jpg",
+  "BMIC-2026-Day-3-Match-14.jpg",
+  "BMIC-2026-Day-3-Match-15.jpg",
+  "BMIC-2026-Day-3-Match-16.jpg",
+  "BMIC-2026-Day-3-Match-17.jpg",
+  "BMIC-2026-Day-3-Overall-Standings.jpg"
 ];
 
+let currentDay = 1;
+
+function selectDay(day) {
+  currentDay = day;
+
+  document.querySelectorAll(".day").forEach((item, index) => {
+    item.classList.toggle("active", index === day - 1);
+  });
+
+  document.getElementById("dayTitle").textContent =
+    "DAY " + day + " – SELECT MATCH";
+
+  showMatch(1);
+}
+
 function showMatch(number) {
+  const globalMatch = (currentDay - 1) * 6 + number;
   const image = document.getElementById("matchImage");
 
-  image.src = matches[number - 1];
-  image.alt = "BMIC 2026 Day 1 Match " + number + " Points Table";
+  image.src = matches[globalMatch - 1];
+
+  image.alt = "BMIC 2026 Day " + currentDay +
+    " Match " + globalMatch + " Points Table";
 
   document.getElementById("matchTitle").textContent =
     number === 6
-    ? "MATCH 06 – OVERALL STANDINGS"
-    : "MATCH 0" + number + " – POINTS TABLE";
+      ? "DAY " + currentDay + " – OVERALL STANDINGS"
+      : "MATCH " + String(globalMatch).padStart(2, "0") +
+        " – POINTS TABLE";
 
-  document.getElementById("matchDay").textContent = "DAY 1 / 18";
+  document.getElementById("matchDay").textContent =
+    "DAY " + currentDay + " / 3";
 
-  document.querySelectorAll(".match-btn").forEach((btn, index) => {
-    btn.classList.toggle("active", index === number - 1);
+  document.querySelectorAll(".match-btn").forEach((button, index) => {
+    button.classList.toggle("active", index === number - 1);
+    button.textContent = "M" + (number === 6 ? 6 : number);
   });
 }
 
@@ -391,10 +425,9 @@ function closeImage() {
 }
 
 document.addEventListener("keydown", function(event) {
-  if(event.key === "Escape") closeImage();
+  if (event.key === "Escape") closeImage();
 });
-</script>
-
+  </script>
 </body>
 </html>
 
