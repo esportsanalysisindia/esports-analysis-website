@@ -49,7 +49,14 @@ button:disabled{opacity:.5}
 <button id="loginBtn" onclick="login()">Login</button>
 <div id="loginMessage" class="note"></div>
 </section>
-
+<section id="resetPanel" class="panel" style="display:none">
+  <h3>Set New Password</h3>
+  <p class="note">Enter your new admin password.</p>
+  <label>New Password</label>
+  <input id="newPassword" type="password" placeholder="Minimum 8 characters">
+  <button type="button" onclick="saveNewPassword()">Update Password</button>
+  <p id="resetMessage" class="note"></p>
+</section>
 <section id="app">
 <div class="panel">
 <strong>Admin Dashboard</strong>
@@ -271,6 +278,40 @@ if(session){
     showSection('news');
   }
 }
+ db.auth.onAuthStateChange((event, session) => {
+  if (event === 'PASSWORD_RECOVERY') {
+    $('login').style.display = 'none';
+    $('app').style.display = 'none';
+    $('resetPanel').style.display = 'block';
+  }
+});
+
+window.saveNewPassword = async function() {
+  const password = $('newPassword').value;
+  const message = $('resetMessage');
+
+  if (password.length < 8) {
+    message.textContent = 'Password must be at least 8 characters.';
+    return;
+  }
+
+  message.textContent = 'Updating password...';
+
+  const { error } = await db.auth.updateUser({
+    password: password
+  });
+
+  if (error) {
+    message.textContent = 'Error: ' + error.message;
+    return;
+  }
+
+  message.textContent = 'Password updated successfully! Please login.';
+
+  await db.auth.signOut();
+  $('resetPanel').style.display = 'none';
+  $('login').style.display = 'block';
+}; 
 </script>
 </body>
 </html>
