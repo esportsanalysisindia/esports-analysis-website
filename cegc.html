@@ -1,0 +1,123 @@
+
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CEGC 2026 | eSPORTS ANALYSIS</title>
+<style>
+*{box-sizing:border-box}
+body{margin:0;background:#080d12;color:#f4f7fa;font-family:Arial,sans-serif}
+header{padding:24px 15px;text-align:center;background:#101a20;border-bottom:2px solid #c7ff35}
+header h1{margin:0;color:#c7ff35;font-size:25px}
+header p{color:#aab5bf;font-size:13px}
+main{max-width:1050px;margin:auto;padding:18px 12px}
+.panel{background:#111a22;border:1px solid #263440;border-radius:12px;padding:15px;margin-bottom:16px}
+h2{text-align:center;margin:5px 0 8px}
+.sub{text-align:center;color:#aab5bf;font-size:13px}
+.tabs{display:flex;justify-content:center;gap:10px;margin:18px 0}
+button{padding:12px 25px;border:1px solid #c7ff35;border-radius:8px;background:#17232b;color:white;font-weight:bold;font-size:15px}
+button.active{background:#c7ff35;color:#101510}
+.tablewrap{overflow-x:auto}
+table{width:100%;border-collapse:collapse;min-width:650px}
+th{background:#1d3545;color:#c7ff35;padding:13px 8px;font-size:12px}
+td{padding:13px 8px;border-bottom:1px solid #263440;text-align:center;font-size:13px}
+td:nth-child(2){text-align:left;font-weight:bold}
+tr:first-child td{color:#c7ff35;font-weight:bold}
+.total{color:#c7ff35;font-weight:bold}
+#status{text-align:center;color:#c7ff35;padding:15px}
+footer{text-align:center;color:#8996a1;padding:25px;font-size:12px}
+</style>
+</head>
+<body>
+<header>
+<h1>eSPORTS ANALYSIS</h1>
+<p>BEYOND THE GAME | BGMI TOURNAMENT COVERAGE</p>
+</header>
+<main>
+<section class="panel">
+<h2>CEGC 2026 – STAGE 1</h2>
+<p class="sub">PRE DIWALI PHASE | NOVEMBER 3–6</p>
+<div class="tabs">
+<button id="groupA" class="active" onclick="changeGroup('Group A')">GROUP A</button>
+<button id="groupB" onclick="changeGroup('Group B')">GROUP B</button>
+</div>
+<h2 id="heading">GROUP A STANDINGS</h2>
+<p class="sub">Live Points Table</p>
+<div id="status">Loading standings...</div>
+<div class="tablewrap">
+<table>
+<thead>
+<tr>
+<th>RANK</th><th>TEAM</th><th>MP</th><th>WWCD</th>
+<th>PLACEMENTS</th><th>FINISHES</th><th>TOTAL</th>
+</tr>
+</thead>
+<tbody id="tableBody"></tbody>
+</table>
+</div>
+</section>
+</main>
+<footer>© eSPORTS ANALYSIS | BEYOND THE GAME</footer>
+
+<script type="module">
+import { createClient } from 'https://esm.sh/@supabase/supabase-js@2';
+
+const db = createClient(
+'https://bujkojmozdioorlkxqco.supabase.co',
+'sb_publishable_6L4ZreFP8vXhtNnd7VTGfA_bnRLk6Ck'
+);
+
+const tournamentId = '8c31ca75-722d-44fe-85b4-835a20ce3bea';
+let activeGroup = 'Group A';
+
+window.changeGroup = function(group){
+activeGroup = group;
+document.getElementById('groupA').classList.toggle('active',group==='Group A');
+document.getElementById('groupB').classList.toggle('active',group==='Group B');
+document.getElementById('heading').textContent = group.toUpperCase()+' STANDINGS';
+loadTable();
+};
+
+async function loadTable(){
+const status = document.getElementById('status');
+const body = document.getElementById('tableBody');
+status.textContent = 'Loading '+activeGroup+'...';
+body.innerHTML = '';
+
+const {data,error} = await db
+.from('points_table')
+.select('team_name,matches_played,wins,placement_points,finish_points,total_points,rank')
+.eq('tournament_id',tournamentId)
+.eq('group_name',activeGroup)
+.order('rank',{ascending:true});
+
+if(error){
+status.textContent = 'Error loading table: '+error.message;
+return;
+}
+if(!data || data.length===0){
+status.textContent = 'No standings found for '+activeGroup+'.';
+return;
+}
+
+data.forEach(team=>{
+const tr=document.createElement('tr');
+[
+team.rank,team.team_name,team.matches_played,team.wins,
+team.placement_points,team.finish_points,team.total_points
+].forEach((value,index)=>{
+const td=document.createElement('td');
+td.textContent=value ?? '-';
+if(index===6) td.className='total';
+tr.appendChild(td);
+});
+body.appendChild(tr);
+});
+status.textContent = data.length+' teams | '+activeGroup;
+}
+
+loadTable();
+</script>
+</body>
+</html>
