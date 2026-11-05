@@ -74,6 +74,27 @@ button:disabled{opacity:.5}
 <p id="message"></p>
 <h3>Published / Saved Records</h3>
 <div id="records"></div>
+<div id="autoUploadPanel" class="panel" style="display:block">
+  <h3>Screenshot Auto Upload</h3>
+  <p class="note">Upload official tournament points table screenshot.</p>
+
+  <label>Tournament ID</label>
+  <input id="uploadTournamentId" type="text" placeholder="Tournament UUID">
+
+  <label>Group</label>
+  <select id="uploadGroup">
+    <option value="Group A">Group A</option>
+    <option value="Group B">Group B</option>
+  </select>
+
+  <label>Points Table Screenshot</label>
+  <input id="pointsScreenshot" type="file" accept="image/*">
+
+  <button type="button" onclick="startPointsOCR()">Read Screenshot</button>
+
+  <div id="ocrStatus" class="note"></div>
+  <div id="ocrPreview"></div>
+</div>
 </section>
 </section>
 </main>
@@ -312,6 +333,32 @@ window.saveNewPassword = async function() {
   $('resetPanel').style.display = 'none';
   $('login').style.display = 'block';
 }; 
+  window.startPointsOCR = async function() {
+  const file = document.getElementById('pointsScreenshot').files[0];
+  const status = document.getElementById('ocrStatus');
+  const preview = document.getElementById('ocrPreview');
+
+  if (!file) {
+    status.textContent = 'Please select a screenshot first.';
+    return;
+  }
+
+  try {
+    status.textContent = 'Loading OCR engine...';
+    preview.textContent = '';
+
+    const Tesseract = await import('https://esm.sh/tesseract.js@5');
+
+    status.textContent = 'Reading screenshot... Please wait.';
+
+    const result = await Tesseract.recognize(file, 'eng');
+    preview.textContent = result.data.text;
+
+    status.textContent = 'Screenshot reading complete. Please verify the text.';
+  } catch (error) {
+    status.textContent = 'OCR Error: ' + error.message;
+  }
+};
 </script>
 </body>
 </html>
