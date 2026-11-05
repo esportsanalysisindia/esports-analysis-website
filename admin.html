@@ -333,6 +333,56 @@ window.saveNewPassword = async function() {
   $('resetPanel').style.display = 'none';
   $('login').style.display = 'block';
 }; 
+  window.parsePointsTable = function(text) {
+  const lines = text.split('\n')
+    .map(line => line.trim())
+    .filter(Boolean);
+
+  const teams = [
+    'GoSolo Epigrotive Gaming',
+    'Unsigned Esports',
+    'Gladiators Esports',
+    'RSPT Official',
+    'Raven Esports',
+    'Team Apex Gaming',
+    'Vasista Esports',
+    'GoSolo HiggBoson',
+    'iQOO 8Bit',
+    'iQOO Team Tamilas',
+    'Myth Official',
+    '4TR Official',
+    'K9 Esports',
+    'Lastade Esports',
+    'VR1 Esports',
+    'MadKings'
+  ];
+
+  const results = [];
+
+  teams.forEach((team, index) => {
+    const escaped = team.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+    const line = lines.find(item =>
+      new RegExp(escaped, 'i').test(item)
+    );
+
+    if (!line) return;
+
+    const numbers = line.match(/\d+/g);
+    if (!numbers || numbers.length < 5) return;
+
+    results.push({
+      rank: index + 1,
+      team_name: team,
+      matches_played: Number(numbers[0]),
+      wins: Number(numbers[1]),
+      placement_points: Number(numbers[2]),
+      finish_points: Number(numbers[3]),
+      total_points: Number(numbers[4])
+    });
+  });
+
+  return results;
+};
   window.startPointsOCR = async function() {
   const file = document.getElementById('pointsScreenshot').files[0];
   const status = document.getElementById('ocrStatus');
