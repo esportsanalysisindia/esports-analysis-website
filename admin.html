@@ -362,9 +362,17 @@ if (!Tesseract) {
 }
     status.textContent = 'Reading screenshot... Please wait.';
 
-    const result = await Tesseract.recognize(file, 'eng');
-    preview.textContent = result.data.text;
+ const imageUrl = URL.createObjectURL(file);
+try {
+  const image = new Image();
+  image.src = imageUrl;
+  await image.decode();
 
+  const result = await Tesseract.recognize(image, 'eng');
+  preview.textContent = result.data.text;
+} finally {
+  URL.revokeObjectURL(imageUrl);
+}
     status.textContent = 'Screenshot reading complete. Please verify the text.';
   } catch (error) {
     status.textContent = 'OCR Error: ' + error.message;
