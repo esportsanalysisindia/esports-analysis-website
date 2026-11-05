@@ -86,12 +86,47 @@ button:disabled{opacity:.5}
     <option value="Group A">Group A</option>
     <option value="Group B">Group B</option>
   </select>
+<label>Day Number</label>
+<select id="uploadDay">
+  <option value="1">Day 1</option>
+  <option value="2">Day 2</option>
+  <option value="3">Day 3</option>
+  <option value="4">Day 4</option>
+  <option value="5">Day 5</option>
+  <option value="6">Day 6</option>
+  <option value="7">Day 7</option>
+  <option value="8">Day 8</option>
+  <option value="9">Day 9</option>
+  <option value="10">Day 10</option>
+</select>
 
+<label>Match Number</label>
+<select id="uploadMatch">
+  <option value="0">Overall Daily Standings</option>
+  <option value="1">After Match 1</option>
+  <option value="2">After Match 2</option>
+  <option value="3">After Match 3</option>
+  <option value="4">After Match 4</option>
+  <option value="5">After Match 5</option>
+  <option value="6">After Match 6</option>
+  <option value="7">After Match 7</option>
+  <option value="8">After Match 8</option>
+  <option value="9">After Match 9</option>
+  <option value="10">After Match 10</option>
+  <option value="11">After Match 11</option>
+  <option value="12">After Match 12</option>
+  <option value="13">After Match 13</option>
+  <option value="14">After Match 14</option>
+  <option value="15">After Match 15</option>
+  <option value="16">After Match 16</option>
+  <option value="17">After Match 17</option>
+  <option value="18">After Match 18</option>
+</select>
   <label>Points Table Screenshot</label>
   <input id="pointsScreenshot" type="file" accept="image/*">
 
   <button type="button" onclick="startPointsOCR()">Read Screenshot</button>
-
+<button type="button" onclick="savePointsScreenshot()">Verify & Save Standings</button>
   <div id="ocrStatus" class="note"></div>
   <div id="ocrPreview"></div>
 </div>
@@ -419,7 +454,14 @@ try {
   await image.decode();
 
   const result = await Tesseract.recognize(image, 'eng');
-  preview.textContent = result.data.text;
+  const parsed = window.parsePointsTable(result.data.text);
+
+window.latestParsedPoints = parsed;
+  preview.textContent = parsed.length
+  ? parsed.map(row =>
+      `${row.rank}. ${row.team_name} | MP ${row.matches_played} | WWCD ${row.wins} | Placement ${row.placement_points} | Finishes ${row.finish_points} | Total ${row.total_points}`
+    ).join('\n')
+  : 'Teams detect nahi hui. Please screenshot check karein.';
 } finally {
   URL.revokeObjectURL(imageUrl);
 }
@@ -427,6 +469,66 @@ try {
   } catch (error) {
     status.textContent = 'OCR Error: ' + error.message;
   }
+};
+  window.savePointsScreenshot = async function() {
+  const status = document.getElementById('ocrStatus');
+  const rows = window.latestParsedPoints || [];
+
+  const tournamentId = document.getElementById('uploadTournamentId').value.trim();
+  const groupName = document.getElementById('uploadGroup').value;
+  const dayNumber = Number(document.getElementById('uploadDay').value);
+  const matchNumber = Number(document.getElementById('uploadMatch').value);
+
+  if (!tournamentId) {
+    status.textContent = 'Tournament ID required.';
+    return;
+  }
+
+  if (rows.length !== 16) {
+    status.textContent = 'Please verify all 16 teams before saving. Detected: ' + rows.length;
+    return;
+  }
+
+  if (!confirm('Save Day ' + dayNumber + ', ' + groupName + ', ' + (matchNumber === 0 ? 'Overall Daily Standings' : 'After Match ' + matchNumber) + '?')) return;
+
+  status.textContent = 'Saving standings...';
+
+  const { error: deleteError } = await db
+    .from('points_table')
+    .delete()
+    .eq('tournament_id', tournamentId)
+    .eq('day_number', dayNumber)
+    .eq('group_name', groupName)
+    .eq('match_number', matchNumber);
+
+  if (deleteError) {
+    status.textContent = 'Delete error: ' + deleteError.message;
+    return;
+  }
+
+  const records = rows.map(row => ({
+    tournament_id: tournamentId,
+    group_name: groupName,
+    day_number: dayNumber,
+    match_number: matchNumber,
+    rank: row.rank,
+    team_name: row.team_name,
+    matches_played: row.matches_played,
+    wins: row.wins,
+    placement_points: row.placement_points,
+    finish_points: row.finish_points,
+    total_points: row.total_points
+  }));
+
+  const { error } = await db.from('points_table').insert(records);
+
+  if (error) {
+    status.textContent = 'Save error: ' + error.message;
+    return;
+  }
+
+  status.textContent = 'Successfully saved 16 teams!';
+  window.latestParsedPoints = null;
 };
 </script>
 </body>
