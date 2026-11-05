@@ -368,11 +368,8 @@ window.saveNewPassword = async function() {
   $('resetPanel').style.display = 'none';
   $('login').style.display = 'block';
 }; 
-  window.parsePointsTable = function(text) {
-  const lines = text.split('\n')
-    .map(line => line.trim())
-    .filter(Boolean);
-
+  
+window.parsePointsTable = function(words, imageWidth, imageHeight) {
   const group = document.getElementById('uploadGroup').value;
 
   const groupA = [
@@ -413,35 +410,111 @@ window.saveNewPassword = async function() {
     'Blue Army'
   ];
 
+  if (!Array.isArray(words) || !imageWidth || !imageHeight) {
+    throw new Error('Position-based OCR data missing.');
+  }
+
   const teams = group === 'Group A' ? groupA : groupB;
-  const normalize = value =>
-    value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const clean = value =>
+    String(value).toLowerCase().replace(/[^a-z0-9]/g, '');
+
+  const usable = words
+    .filter(w => w.text && w.confidence > 25 && w.bbox)
+    .map(w => ({
+      text: clean(w.text),
+      x: (w.bbox.x0 + w.bbox.x1) / 2 / imageWidth,
+      y: (w.bbox.y0 + w.bbox.y1) / 2,
+      confidence: w.confidence
+    }))
+    .sort((a, b) => a.y - b.y || a.x - b.x);
 
   const results = [];
+  const rowTolerance = imageHeight * 0.018;
 
   teams.forEach(team => {
-    const line = lines.find(item =>
-      normalize(item).includes(normalize(team))
+    const tokens = team.split(' ').map(clean);
+    let teamY = null;
+
+    for (let i = 0; i <= usable.length - tokens.length; i++) {
+      const section = usable.slice(i, i + tokens.length);
+
+      const matches = tokens.every((token, index) =>
+        section[index].text === token
+      );
+
+      const sameRow = section.every(word =>
+        Math.abs(word.y - section[0].y) < rowTolerance
+      );
+
+      if (matches && sameRow) {
+        teamY = section.reduce((sum, word) => sum + word.y, 0)
+          / section.length;
+        break;
+      }
+    }
+
+    if (teamY === null) return;
+
+    const row = usable.filter(word =>
+      Math.abs(word.y - teamY) < rowTolerance &&
+      /^\d+$/.test(word.text)
     );
 
-    if (!line) return;
+    const getNumber = (min, max) => {
+      const found = row
+        .filter(word => word.x >= min && word.x < max)
+        .sort((a, b) => a.x - b.x);
 
-    const numbers = line.match(/\d+/g);
-    if (!numbers || numbers.length < 6) return;
+      return found.length === 1 ? Number(found[0].text) : null;
+    };
+
+    const rank = getNumber(0.06, 0.14);
+    const matches = getNumber(0.45, 0.55);
+    const wins = getNumber(0.55, 0.64);
+    const placement = getNumber(0.64, 0.74);
+    const finishes = getNumber(0.74, 0.84);
+    const total = getNumber(0.84, 0.96);
+
+    if ([rank, matches, wins, placement, finishes, total]
+      .some(value => value === null)) return;
 
     results.push({
-      rank: Number(numbers[0]),
+      rank,
       team_name: team,
-      matches_played: Number(numbers[1]),
-      wins: Number(numbers[2]),
-      placement_points: Number(numbers[3]),
-finish_points: Number(numbers[4]),
-      total_points: Number(numbers[5])
+      matches_played: matches,
+      wins,
+      placement_points: placement,
+      finish_points: finishes,
+      total_points: total
     });
   });
 
-  return results.sort((a, b) => a.rank - b.rank);
+  results.sort((a, b) => a.rank - b.rank);
+
+  if (results.length !== 16) {
+    throw new Error(
+      'Only ' + results.length +
+      ' teams detected. Please check screenshot and OCR.'
+    );
+  }
+
+  if (new Set(results.map(r => r.team_name)).size !== 16) {
+    throw new Error('Duplicate team detected.');
+  }
+
+  results.forEach((r, index) => {
+    if (
+      r.rank !== index + 1 ||
+      r.placement_points + r.finish_points !== r.total_points
+    ) {
+      throw new Error('Points validation failed for ' + r.team_name);
+    }
+  });
+
+  return results;
 };
+  
   window.startPointsOCR = async function() {
   const file = document.getElementById('pointsScreenshot').files[0];
   const status = document.getElementById('ocrStatus');
@@ -478,7 +551,11 @@ try {
   await image.decode();
 
   const result = await Tesseract.recognize(image, 'eng');
-  const parsed = window.parsePointsTable(result.data.text);
+const parsed = window.parsePointsTable(
+  result.data.words,
+  image.naturalWidth,
+  image.naturalHeight
+);
 
 window.latestParsedPoints = parsed;
   preview.textContent = parsed.length
@@ -517,24 +594,14 @@ window.latestParsedPoints = parsed;
 
   status.textContent = 'Saving standings...';
 
-  const { error: deleteError } = await db
-    .from('points_table')
-    .delete()
-    .eq('tournament_id', tournamentId)
-    .eq('day_number', dayNumber)
-    .eq('group_name', groupName)
-    .eq('match_number', matchNumber);
-
-  if (deleteError) {
-    status.textContent = 'Delete error: ' + deleteError.message;
-    return;
-  }
+  const savedAt = new Date().toISOString();
 
   const records = rows.map(row => ({
     tournament_id: tournamentId,
     group_name: groupName,
     day_number: dayNumber,
     match_number: matchNumber,
+    uploaded_at: savedAt,
     rank: row.rank,
     team_name: row.team_name,
     matches_played: row.matches_played,
@@ -550,6 +617,21 @@ window.latestParsedPoints = parsed;
     status.textContent = 'Save error: ' + error.message;
     return;
   }
+    const { error: cleanupError } = await db
+  .from('points_table')
+  .delete()
+  .eq('tournament_id', tournamentId)
+  .eq('day_number', dayNumber)
+  .eq('group_name', groupName)
+  .eq('match_number', matchNumber)
+  .neq('uploaded_at', savedAt);
+
+if (cleanupError) {
+  status.textContent =
+    'New standings saved, but old records cleanup failed: ' +
+    cleanupError.message;
+  return;
+}
 
   status.textContent = 'Successfully saved 16 teams!';
   window.latestParsedPoints = null;
