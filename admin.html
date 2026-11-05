@@ -373,7 +373,9 @@ window.saveNewPassword = async function() {
     .map(line => line.trim())
     .filter(Boolean);
 
-  const teams = [
+  const group = document.getElementById('uploadGroup').value;
+
+  const groupA = [
     'GoSolo Epigrotive Gaming',
     'Unsigned Esports',
     'Gladiators Esports',
@@ -392,31 +394,53 @@ window.saveNewPassword = async function() {
     'MadKings'
   ];
 
+  const groupB = [
+    'Nebula Esports',
+    'iQOO Revenant Xspark',
+    'Team Outrage',
+    'Santa Esports Titans',
+    'iQOO Orangutan',
+    'GoSolo Rapid Chaos',
+    'Blitz Esports',
+    'Wyld Fangs',
+    'GodLike Esports',
+    'Team Hector',
+    'Team AX',
+    'Mysterious4 Esports',
+    'Genesis Esports',
+    'Welt Esports',
+    'Meta Ninja',
+    'Blue Army'
+  ];
+
+  const teams = group === 'Group A' ? groupA : groupB;
+  const normalize = value =>
+    value.toLowerCase().replace(/[^a-z0-9]/g, '');
+
   const results = [];
 
-  teams.forEach((team, index) => {
-    const escaped = team.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  teams.forEach(team => {
     const line = lines.find(item =>
-      new RegExp(escaped, 'i').test(item)
+      normalize(item).includes(normalize(team))
     );
 
     if (!line) return;
 
     const numbers = line.match(/\d+/g);
-    if (!numbers || numbers.length < 5) return;
+    if (!numbers || numbers.length < 6) return;
 
     results.push({
-      rank: index + 1,
+      rank: Number(numbers[0]),
       team_name: team,
-      matches_played: Number(numbers[0]),
-      wins: Number(numbers[1]),
-      placement_points: Number(numbers[2]),
-      finish_points: Number(numbers[3]),
-      total_points: Number(numbers[4])
+      matches_played: Number(numbers[1]),
+      wins: Number(numbers[2]),
+      placement_points: Number(numbers[3]),
+      finish_points: Number(numbers[4]),
+      total_points: Number(numbers[5])
     });
   });
 
-  return results;
+  return results.sort((a, b) => a.rank - b.rank);
 };
   window.startPointsOCR = async function() {
   const file = document.getElementById('pointsScreenshot').files[0];
